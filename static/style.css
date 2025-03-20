@@ -1,0 +1,19 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+nav ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+nav ul li {
+    display: inline;
+    margin-right: 10px;
+}
+
+footer {
+    margin-top: 20px;
+    font-size: 0.8em;
+    color: #666;
+}
