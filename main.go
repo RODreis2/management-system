@@ -28,6 +28,7 @@ func main() {
     http.HandleFunc("/create_order", handlers.CreateOrderHandler)
     http.HandleFunc("/orders", handlers.OrdersHandler)
     http.HandleFunc("/view_order", handlers.ViewOrderHandler)
+    http.HandleFunc("/edit_order", handlers.EditOrderHandler)
     http.HandleFunc("/image/", handlers.ServeImageHandler)
 
     log.Println("Server starting on port 8080...")

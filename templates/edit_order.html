@@ -15,7 +15,7 @@
             <li><a href="/admin">Admin Panel</a></li>
             {{end}}
             <li><a href="/create_order">Create Order</a></li>
-            <li><a href="/orders">My Orders</a></li>
+            <li><a href="/orders">All Orders</a></li>
         </ul>
     </nav>
     <h1>{{.Title}}</h1>
@@ -23,11 +23,16 @@
     <p>{{.Error}}</p>
     {{end}}
     <form method="POST" enctype="multipart/form-data">
-        <input type="text" name="orderName" placeholder="Order Name" required>
-        <textarea name="items" placeholder="Items" required></textarea>
+        <input type="hidden" name="orderID" value="{{.OrderID}}">
+        <input type="text" name="orderName" value="{{.Order.OrderName}}" required>
+        <textarea name="items" required>{{.Order.Items}}</textarea>
         <input type="file" name="images" multiple accept="image/*">
-        <button type="submit">Create Order</button>
+        <button type="submit">Update Order</button>
     </form>
+    <h2>Current Images</h2>
+    {{range .Images}}
+    <img src="{{.}}" alt="Order Image">
+    {{end}}
     <footer>
         <p>User System - {{.Year}}</p>
     </footer>

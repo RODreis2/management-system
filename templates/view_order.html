@@ -24,6 +24,7 @@
     <p>Order Name: {{.Order.OrderName}}</p>
     <p>Items: {{.Order.Items}}</p>
     <p>Created by: {{.Order.Username}}</p>
+    <a href="/edit_order?id={{.OrderID}}">Edit Order</a>
     <h2>Images</h2>
     {{range .Images}}
     <img src="{{.}}" alt="Order Image">
