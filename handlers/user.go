@@ -22,8 +22,9 @@ func UserDataHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     var username string
-    err = db.DB.QueryRow("SELECT username FROM users WHERE uuid = ?", userUUID.String()).Scan(&username)
-    if err != nil {
+    var storedUUID string
+    err = db.DB.QueryRow("SELECT username, uuid FROM users WHERE uuid = ?", userUUID.String()).Scan(&username, &storedUUID)
+    if err != nil || storedUUID != userUUID.String() {
         http.Redirect(w, r, "/login", http.StatusSeeOther)
         return
     }
@@ -44,5 +45,14 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
         MaxAge: -1,
     }
     http.SetCookie(w, cookie)
+
+    cookie = &http.Cookie{
+        Name:   "isAdmin",
+        Value:  "",
+        Path:   "/",
+        MaxAge: -1,
+    }
+    http.SetCookie(w, cookie)
+
     http.Redirect(w, r, "/", http.StatusSeeOther)
 }

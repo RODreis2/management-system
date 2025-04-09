@@ -16,6 +16,7 @@ func main() {
     http.HandleFunc("/register", handlers.RegisterHandler)
     http.HandleFunc("/user", handlers.UserDataHandler)
     http.HandleFunc("/logout", handlers.LogoutHandler)
+    http.HandleFunc("/admin", handlers.AdminHandler)
 
     log.Println("Server starting on port 8080...")
     err := http.ListenAndServe(":8080", nil)

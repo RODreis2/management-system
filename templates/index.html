@@ -12,6 +12,9 @@
             <li><a href="/">Home</a></li>
             <li><a href="/user">User Data</a></li>
             <li><a href="/logout">Logout</a></li>
+            {{if .IsAdmin}}
+            <li><a href="/admin">Admin Panel</a></li>
+            {{end}}
             {{else}}
             <li><a href="/">Home</a></li>
             <li><a href="/login">Login</a></li>

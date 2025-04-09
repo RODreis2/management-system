@@ -11,13 +11,26 @@
             <li><a href="/">Home</a></li>
             <li><a href="/user">User Data</a></li>
             <li><a href="/logout">Logout</a></li>
-            {{if .IsAdmin}}
             <li><a href="/admin">Admin Panel</a></li>
-            {{end}}
         </ul>
     </nav>
     <h1>{{.Title}}</h1>
     <p>{{.Message}}</p>
+    {{if .Error}}
+    <p>{{.Error}}</p>
+    {{end}}
+    <h2>Create New User</h2>
+    <form method="POST">
+        <input type="text" name="username" placeholder="Username" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <button type="submit">Create User</button>
+    </form>
+    <h2>Users</h2>
+    <ul>
+        {{range .Users}}
+        <li>ID: {{.ID}}, Username: {{.Username}}, UUID: {{.UUID}}</li>
+        {{end}}
+    </ul>
     <footer>
         <p>User System - {{.Year}}</p>
     </footer>
