@@ -24,6 +24,13 @@ type PageData struct {
         Items     string
         Username  string
     }
+    Order    struct {
+        ID        int
+        OrderName string
+        Items     string
+        Username  string
+    }
+    Images   []string
 }
 
 var Tmpl = template.Must(template.ParseFiles(
@@ -34,6 +41,7 @@ var Tmpl = template.Must(template.ParseFiles(
     "templates/admin.html",
     "templates/create_order.html",
     "templates/orders.html",
+    "templates/view_order.html",
 ))
 
 func IndexHandler(w http.ResponseWriter, r *http.Request) {

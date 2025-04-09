@@ -27,6 +27,8 @@ func main() {
     })
     http.HandleFunc("/create_order", handlers.CreateOrderHandler)
     http.HandleFunc("/orders", handlers.OrdersHandler)
+    http.HandleFunc("/view_order", handlers.ViewOrderHandler)
+    http.HandleFunc("/image/", handlers.ServeImageHandler)
 
     log.Println("Server starting on port 8080...")
     err := http.ListenAndServe(":8080", nil)

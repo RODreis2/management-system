@@ -21,7 +21,7 @@
     <h1>{{.Title}}</h1>
     <ul>
         {{range .Orders}}
-        <li>ID: {{.ID}}, Order Name: {{.OrderName}}, Items: {{.Items}}, Created by: {{.Username}}</li>
+        <li>ID: {{.ID}}, Order Name: {{.OrderName}}, Items: {{.Items}}, Created by: {{.Username}} <a href="/view_order?id={{.ID}}">View</a></li>
         {{end}}
     </ul>
     <footer>

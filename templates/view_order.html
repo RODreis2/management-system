@@ -15,19 +15,19 @@
             <li><a href="/admin">Admin Panel</a></li>
             {{end}}
             <li><a href="/create_order">Create Order</a></li>
-            <li><a href="/orders">My Orders</a></li>
+            <li><a href="/orders">All Orders</a></li>
         </ul>
     </nav>
     <h1>{{.Title}}</h1>
-    {{if .Error}}
-    <p>{{.Error}}</p>
+    <h2>Order Details</h2>
+    <p>Order ID: {{.Order.ID}}</p>
+    <p>Order Name: {{.Order.OrderName}}</p>
+    <p>Items: {{.Order.Items}}</p>
+    <p>Created by: {{.Order.Username}}</p>
+    <h2>Images</h2>
+    {{range .Images}}
+    <img src="{{.}}" alt="Order Image">
     {{end}}
-    <form method="POST" enctype="multipart/form-data">
-        <input type="text" name="orderName" placeholder="Order Name" required>
-        <textarea name="items" placeholder="Items" required></textarea>
-        <input type="file" name="image" accept="image/*">
-        <button type="submit">Create Order</button>
-    </form>
     <footer>
         <p>User System - {{.Year}}</p>
     </footer>
