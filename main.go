@@ -16,7 +16,15 @@ func main() {
     http.HandleFunc("/register", handlers.RegisterHandler)
     http.HandleFunc("/user", handlers.UserDataHandler)
     http.HandleFunc("/logout", handlers.LogoutHandler)
-    http.HandleFunc("/admin", handlers.AdminHandler)
+    http.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
+        if r.Method == "POST" {
+            r.ParseForm()
+            if r.FormValue("_method") == "DELETE" {
+                r.Method = "DELETE"
+            }
+        }
+        handlers.AdminHandler(w, r)
+    })
 
     log.Println("Server starting on port 8080...")
     err := http.ListenAndServe(":8080", nil)

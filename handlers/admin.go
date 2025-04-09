@@ -66,6 +66,45 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    if r.Method == "DELETE" {
+        userID := r.FormValue("userID")
+
+        // Check if the user to be deleted is the admin
+        var isAdmin bool
+        err = db.DB.QueryRow("SELECT is_admin FROM users WHERE id = ?", userID).Scan(&isAdmin)
+        if err != nil {
+            http.Error(w, "Error fetching user data", http.StatusInternalServerError)
+            return
+        }
+
+        if isAdmin {
+            data := PageData{
+                Title:   "Admin Panel",
+                Message: "Manage Users",
+                Year:    time.Now().Year(),
+                Error:   "Cannot delete the admin account.",
+            }
+            Tmpl.ExecuteTemplate(w, "admin.html", data)
+            return
+        }
+
+        _, err = db.DB.Exec("DELETE FROM users WHERE id = ?", userID)
+        if err != nil {
+            log.Printf("Error deleting user from database: %v", err)
+            data := PageData{
+                Title:   "Admin Panel",
+                Message: "Manage Users",
+                Year:    time.Now().Year(),
+                Error:   "Error deleting user. Please try again.",
+            }
+            Tmpl.ExecuteTemplate(w, "admin.html", data)
+            return
+        }
+
+        http.Redirect(w, r, "/admin", http.StatusSeeOther)
+        return
+    }
+
     rows, err := db.DB.Query("SELECT id, username, uuid FROM users")
     if err != nil {
         http.Error(w, "Error fetching users", http.StatusInternalServerError)

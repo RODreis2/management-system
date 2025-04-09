@@ -28,11 +28,28 @@
     <h2>Users</h2>
     <ul>
         {{range .Users}}
-        <li>ID: {{.ID}}, Username: {{.Username}}, UUID: {{.UUID}}</li>
+        <li>ID: {{.ID}}, Username: {{.Username}}, UUID: {{.UUID}}
+            <form method="POST" action="/admin">
+                <input type="hidden" name="_method" value="DELETE">
+                <input type="hidden" name="userID" value="{{.ID}}">
+                <button type="submit">Delete</button>
+            </form>
+        </li>
         {{end}}
     </ul>
     <footer>
         <p>User System - {{.Year}}</p>
     </footer>
+    <script>
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function(event) {
+                if (this.querySelector('input[name="_method"][value="DELETE"]')) {
+                    if (!confirm('Are you sure you want to delete this user?')) {
+                        event.preventDefault();
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>
