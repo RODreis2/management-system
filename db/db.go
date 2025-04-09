@@ -18,7 +18,7 @@ func InitDB() {
         log.Fatal(err)
     }
 
-    createTable := `
+    createUsersTable := `
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
@@ -26,7 +26,20 @@ func InitDB() {
         uuid TEXT UNIQUE,
         is_admin BOOLEAN DEFAULT FALSE
     );`
-    _, err = DB.Exec(createTable)
+    _, err = DB.Exec(createUsersTable)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    createOrdersTable := `
+    CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_name TEXT NOT NULL,
+        items TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );`
+    _, err = DB.Exec(createOrdersTable)
     if err != nil {
         log.Fatal(err)
     }

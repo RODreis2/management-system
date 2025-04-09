@@ -18,6 +18,12 @@ type PageData struct {
         UUID     string
     }
     IsAdmin  bool
+    Orders   []struct {
+        ID        int
+        OrderName string
+        Items     string
+        Username  string
+    }
 }
 
 var Tmpl = template.Must(template.ParseFiles(
@@ -26,6 +32,8 @@ var Tmpl = template.Must(template.ParseFiles(
     "templates/register.html",
     "templates/user.html",
     "templates/admin.html",
+    "templates/create_order.html",
+    "templates/orders.html",
 ))
 
 func IndexHandler(w http.ResponseWriter, r *http.Request) {

@@ -8,7 +8,6 @@
 <body>
     <nav>
         <ul>
-            {{if .LoggedIn}}
             <li><a href="/">Home</a></li>
             <li><a href="/user">User Data</a></li>
             <li><a href="/logout">Logout</a></li>
@@ -16,16 +15,15 @@
             <li><a href="/admin">Admin Panel</a></li>
             {{end}}
             <li><a href="/create_order">Create Order</a></li>
-            <li><a href="/orders">My Orders</a></li>
-            {{else}}
-            <li><a href="/">Home</a></li>
-            <li><a href="/login">Login</a></li>
-            <li><a href="/register">Register</a></li>
-            {{end}}
+            <li><a href="/orders">All Orders</a></li>
         </ul>
     </nav>
     <h1>{{.Title}}</h1>
-    <p>{{.Message}}</p>
+    <ul>
+        {{range .Orders}}
+        <li>ID: {{.ID}}, Order Name: {{.OrderName}}, Items: {{.Items}}, Created by: {{.Username}}</li>
+        {{end}}
+    </ul>
     <footer>
         <p>User System - {{.Year}}</p>
     </footer>
