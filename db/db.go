@@ -20,7 +20,8 @@ func InitDB() {
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        uuid TEXT UNIQUE
     );`
     _, err = DB.Exec(createTable)
     if err != nil {
