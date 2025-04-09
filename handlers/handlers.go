@@ -34,7 +34,11 @@ type PageData struct {
     OrderID  string
 }
 
-var Tmpl = template.Must(template.ParseFiles(
+var Tmpl = template.Must(template.New("").Funcs(template.FuncMap{
+    "safeHTML": func(html string) template.HTML {
+        return template.HTML(html)
+    },
+}).ParseFiles(
     "templates/index.html",
     "templates/login.html",
     "templates/register.html",

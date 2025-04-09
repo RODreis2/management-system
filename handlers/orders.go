@@ -8,6 +8,8 @@ import (
     "log"
     "io"
     "strconv"
+    "github.com/russross/blackfriday/v2"
+    "strings"
 )
 
 func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
@@ -23,6 +25,11 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method == "POST" {
         orderName := r.FormValue("orderName")
         items := r.FormValue("items")
+
+        // Handle multiline input
+        items = strings.TrimSpace(items)
+        items = strings.ReplaceAll(items, "\r\n", "\n")
+        items = strings.ReplaceAll(items, "\r", "\n")
 
         cookie, err := r.Cookie("userUUID")
         if err != nil {
@@ -168,6 +175,9 @@ func ViewOrderHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // Convert Markdown to HTML
+    order.Items = string(blackfriday.Run([]byte(order.Items)))
+
     rows, err := db.DB.Query("SELECT id FROM order_images WHERE order_id = ?", orderID)
     if err != nil {
         http.Error(w, "Error fetching order images", http.StatusInternalServerError)
@@ -246,6 +256,11 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method == "POST" {
         orderName := r.FormValue("orderName")
         items := r.FormValue("items")
+
+        // Handle multiline input
+        items = strings.TrimSpace(items)
+        items = strings.ReplaceAll(items, "\r\n", "\n")
+        items = strings.ReplaceAll(items, "\r", "\n")
 
         _, err := db.DB.Exec("UPDATE orders SET order_name = ?, items = ? WHERE id = ?", orderName, items, orderID)
         if err != nil {

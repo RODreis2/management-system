@@ -22,7 +22,7 @@
     <h2>Order Details</h2>
     <p>Order ID: {{.Order.ID}}</p>
     <p>Order Name: {{.Order.OrderName}}</p>
-    <p>Items: {{.Order.Items}}</p>
+    <p>Items: <div>{{.Order.Items | safeHTML}}</div></p>
     <p>Created by: {{.Order.Username}}</p>
     <a href="/edit_order?id={{.OrderID}}">Edit Order</a>
     <h2>Images</h2>

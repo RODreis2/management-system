@@ -25,7 +25,7 @@
     <form method="POST" enctype="multipart/form-data">
         <input type="hidden" name="orderID" value="{{.OrderID}}">
         <input type="text" name="orderName" value="{{.Order.OrderName}}" required>
-        <textarea name="items" required>{{.Order.Items}}</textarea>
+        <textarea name="items" rows="10" required>{{.Order.Items}}</textarea>
         <input type="file" name="images" multiple accept="image/*">
         <button type="submit">Update Order</button>
     </form>
