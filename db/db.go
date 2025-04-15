@@ -37,9 +37,22 @@ func InitDB() {
         order_name TEXT NOT NULL,
         items TEXT NOT NULL,
         user_id INTEGER NOT NULL,
+        closed BOOLEAN DEFAULT FALSE,
         FOREIGN KEY (user_id) REFERENCES users(id)
     );`
     _, err = DB.Exec(createOrdersTable)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    createOrderImagesTable := `
+    CREATE TABLE IF NOT EXISTS order_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id INTEGER NOT NULL,
+        image_data BLOB NOT NULL,
+        FOREIGN KEY (order_id) REFERENCES orders(id)
+    );`
+    _, err = DB.Exec(createOrderImagesTable)
     if err != nil {
         log.Fatal(err)
     }
