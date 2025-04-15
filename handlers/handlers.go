@@ -29,6 +29,7 @@ type PageData struct {
         OrderName string
         Items     string
         Username  string
+        Closed    bool
     }
     Images   []string
     OrderID  string
@@ -48,6 +49,7 @@ var Tmpl = template.Must(template.New("").Funcs(template.FuncMap{
     "templates/orders.html",
     "templates/view_order.html",
     "templates/edit_order.html",
+    "templates/closed_orders.html",
 ))
 
 func IndexHandler(w http.ResponseWriter, r *http.Request) {

@@ -37,6 +37,7 @@ func InitDB() {
         order_name TEXT NOT NULL,
         items TEXT NOT NULL,
         user_id INTEGER NOT NULL,
+        closed BOOLEAN DEFAULT FALSE,
         FOREIGN KEY (user_id) REFERENCES users(id)
     );`
     _, err = DB.Exec(createOrdersTable)

@@ -16,6 +16,7 @@
             {{end}}
             <li><a href="/create_order">Create Order</a></li>
             <li><a href="/orders">All Orders</a></li>
+            <li><a href="/closed_orders">Closed Orders</a></li>
         </ul>
     </nav>
     <h1>{{.Title}}</h1>
@@ -24,7 +25,15 @@
     <p>Order Name: {{.Order.OrderName}}</p>
     <p>Items: <div>{{.Order.Items | safeHTML}}</div></p>
     <p>Created by: {{.Order.Username}}</p>
+    {{if not .Order.Closed}}
     <a href="/edit_order?id={{.OrderID}}">Edit Order</a>
+    <form method="POST" action="/close_order">
+        <input type="hidden" name="orderID" value="{{.OrderID}}">
+        <button type="submit" onclick="return confirm('Are you sure you want to close this order? It cannot be edited after closing.')">Close Order</button>
+    </form>
+    {{else}}
+    <p><strong>This order is closed and cannot be edited.</strong></p>
+    {{end}}
     <h2>Images</h2>
     {{range .Images}}
     <img src="{{.}}" alt="Order Image">
