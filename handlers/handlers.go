@@ -2,8 +2,11 @@ package handlers
 
 import (
     "html/template"
+    "management-system/db"
     "net/http"
     "time"
+
+    "github.com/google/uuid"
 )
 
 type PageData struct {
@@ -53,11 +56,20 @@ var Tmpl = template.Must(template.New("").Funcs(template.FuncMap{
 ))
 
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
-    _, err := r.Cookie("userUUID")
+    cookie, err := r.Cookie("userUUID")
     loggedIn := err == nil
+    isAdmin := false
 
-    cookie, err := r.Cookie("isAdmin")
-    isAdmin := err == nil && cookie.Value == "true"
+    if loggedIn {
+        userUUID, err := uuid.Parse(cookie.Value)
+        if err == nil {
+            var adminFlag bool
+            err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&adminFlag)
+            if err == nil {
+                isAdmin = adminFlag
+            }
+        }
+    }
 
     data := PageData{
         Title:    "Welcome",

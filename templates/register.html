@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+    <header>
+        <h1>{{.Title}}</h1>
+    </header>
     <nav>
         <ul>
             <li><a href="/">Home</a></li>
@@ -13,15 +17,16 @@
             <li><a href="/register">Register</a></li>
         </ul>
     </nav>
-    <h1>{{.Title}}</h1>
-    <form method="POST">
-        <input type="text" name="username" placeholder="Username" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <button type="submit">Register</button>
-    </form>
-    {{if .Error}}
-    <p>{{.Error}}</p>
-    {{end}}
+    <div class="container">
+        <form method="POST">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit">Register</button>
+        </form>
+        {{if .Error}}
+        <p class="error">{{.Error}}</p>
+        {{end}}
+    </div>
     <footer>
         <p>User System - {{.Year}}</p>
     </footer>

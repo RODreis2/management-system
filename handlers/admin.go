@@ -11,8 +11,21 @@ import (
 )
 
 func AdminHandler(w http.ResponseWriter, r *http.Request) {
-    cookie, err := r.Cookie("isAdmin")
-    if err != nil || cookie.Value != "true" {
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin)
+    if err != nil || !isAdmin {
         http.Redirect(w, r, "/", http.StatusSeeOther)
         return
     }

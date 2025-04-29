@@ -11,6 +11,10 @@ func main() {
     db.InitDB()
     defer db.DB.Close()
 
+    // Serve static files
+    fs := http.FileServer(http.Dir("static"))
+    http.Handle("/static/", http.StripPrefix("/static/", fs))
+
     http.HandleFunc("/", handlers.IndexHandler)
     http.HandleFunc("/login", handlers.LoginHandler)
     http.HandleFunc("/register", handlers.RegisterHandler)

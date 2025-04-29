@@ -60,24 +60,27 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         MaxAge:   3600, // 1 hour
     })
 
-    if isAdmin {
-        http.SetCookie(w, &http.Cookie{
-            Name:     "isAdmin",
-            Value:    "true",
-            Path:     "/",
-            HttpOnly: true,
-            MaxAge:   3600, // 1 hour
-        })
-    }
-
     http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method == "GET" {
         // Check if the user is an admin
-        cookie, err := r.Cookie("isAdmin")
-        if err != nil || cookie.Value != "true" {
+        cookie, err := r.Cookie("userUUID")
+        if err != nil {
+            http.Redirect(w, r, "/", http.StatusSeeOther)
+            return
+        }
+
+        userUUID, err := uuid.Parse(cookie.Value)
+        if err != nil {
+            http.Redirect(w, r, "/", http.StatusSeeOther)
+            return
+        }
+
+        var isAdmin bool
+        err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin)
+        if err != nil || !isAdmin {
             http.Redirect(w, r, "/", http.StatusSeeOther)
             return
         }
@@ -91,8 +94,21 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     // Check if the user is an admin
-    cookie, err := r.Cookie("isAdmin")
-    if err != nil || cookie.Value != "true" {
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin)
+    if err != nil || !isAdmin {
         http.Redirect(w, r, "/", http.StatusSeeOther)
         return
     }
@@ -125,8 +141,8 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    userUUID := uuid.New().String()
-    _, err = db.DB.Exec("INSERT INTO users (username, password, uuid) VALUES (?, ?, ?)", username, string(hashedPassword), userUUID)
+    userUUIDStr := uuid.New().String()
+    _, err = db.DB.Exec("INSERT INTO users (username, password, uuid) VALUES (?, ?, ?)", username, string(hashedPassword), userUUIDStr)
     if err != nil {
         log.Printf("Error inserting user into database: %v", err)
         data := PageData{

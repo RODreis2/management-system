@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+    <header>
+        <h1>{{.Title}}</h1>
+    </header>
     <nav>
         <ul>
             <li><a href="/">Home</a></li>
@@ -19,23 +23,202 @@
             <li><a href="/closed_orders">Closed Orders</a></li>
         </ul>
     </nav>
-    <h1>{{.Title}}</h1>
-    {{if .Error}}
-    <p>{{.Error}}</p>
-    {{end}}
-    <form method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="orderID" value="{{.OrderID}}">
-        <input type="text" name="orderName" value="{{.Order.OrderName}}" required>
-        <textarea name="items" rows="10" required>{{.Order.Items}}</textarea>
-        <input type="file" name="images" multiple accept="image/*">
-        <button type="submit">Update Order</button>
-    </form>
-    <h2>Current Images</h2>
-    {{range .Images}}
-    <img src="{{.}}" alt="Order Image">
-    {{end}}
+    <div class="container">
+        {{if .Error}}
+        <p class="error">{{.Error}}</p>
+        {{end}}
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="orderID" value="{{.OrderID}}">
+            <input type="text" name="orderName" value="{{.Order.OrderName}}" required>
+            <textarea name="items" rows="10" required>{{.Order.Items}}</textarea>
+            <input type="file" name="images" multiple accept="image/*">
+            <button type="submit">Update Order</button>
+        </form>
+        <h2>Current Images</h2>
+        <div class="image-gallery">
+            {{range .Images}}
+            <img src="{{.}}" alt="Order Image" class="gallery-thumb" onclick="openGallery('{{.}}')">
+            {{end}}
+        </div>
+    </div>
+    <div class="gallery-modal" id="galleryModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeGallery()">×</button>
+            <button class="nav-btn left" id="prevBtn" onclick="navigateGallery(-1)">&#8249;</button>
+            <img id="modalImage" class="modal-image" src="" alt="Gallery View">
+            <button class="nav-btn right" id="nextBtn" onclick="navigateGallery(1)">&#8250;</button>
+            <div class="modal-controls">
+                <button class="modal-btn" onclick="zoomIn()">Zoom In</button>
+                <button class="modal-btn" onclick="zoomOut()">Zoom Out</button>
+                <button class="modal-btn" onclick="downloadImage()">Download</button>
+            </div>
+        </div>
+    </div>
     <footer>
         <p>User System - {{.Year}}</p>
     </footer>
+    <script>
+        let currentScale = 1;
+        let currentImage = '';
+        let currentIndex = -1;
+        let imageList = [];
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let translateX = 0, translateY = 0;
+
+        function openGallery(imageSrc) {
+            currentImage = imageSrc;
+            imageList = Array.from(document.querySelectorAll('.gallery-thumb')).map(img => img.src);
+            currentIndex = imageList.indexOf(imageSrc);
+            const modal = document.getElementById('galleryModal');
+            const modalImg = document.getElementById('modalImage');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            modalImg.src = imageSrc;
+            modalImg.style.transform = `scale(${currentScale})`;
+            modalImg.style.left = '0px';
+            modalImg.style.top = '0px';
+            translateX = 0;
+            translateY = 0;
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+            
+            // Show/hide navigation buttons based on number of images
+            if (imageList.length > 1) {
+                prevBtn.style.display = 'block';
+                nextBtn.style.display = 'block';
+            } else {
+                prevBtn.style.display = 'none';
+                nextBtn.style.display = 'none';
+            }
+        }
+
+        function closeGallery() {
+            const modal = document.getElementById('galleryModal');
+            modal.classList.remove('active');
+            currentScale = 1; // Reset zoom
+            translateX = 0;
+            translateY = 0;
+            document.body.style.overflow = ''; // Restore scrolling
+        }
+
+        function navigateGallery(direction) {
+            if (imageList.length <= 1) return;
+            currentIndex = (currentIndex + direction + imageList.length) % imageList.length;
+            currentImage = imageList[currentIndex];
+            const modalImg = document.getElementById('modalImage');
+            modalImg.src = currentImage;
+            currentScale = 1; // Reset zoom
+            translateX = 0;
+            translateY = 0;
+            modalImg.style.transform = `scale(${currentScale})`;
+            modalImg.style.left = '0px';
+            modalImg.style.top = '0px';
+        }
+
+        function zoomIn() {
+            currentScale = Math.min(currentScale + 0.1, 3); // Max zoom 3x
+            const modalImg = document.getElementById('modalImage');
+            modalImg.style.transform = `scale(${currentScale})`;
+            adjustPositionOnZoom(modalImg);
+        }
+
+        function zoomOut() {
+            currentScale = Math.max(currentScale - 0.1, 0.5); // Min zoom 0.5x
+            const modalImg = document.getElementById('modalImage');
+            modalImg.style.transform = `scale(${currentScale})`;
+            adjustPositionOnZoom(modalImg);
+        }
+
+        function adjustPositionOnZoom(img) {
+            // Ensure image stays within modal bounds after zoom
+            const modal = document.getElementById('galleryModal');
+            const modalRect = modal.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+
+            let newX = translateX;
+            let newY = translateY;
+
+            if (imgRect.width > modalRect.width) {
+                newX = Math.max(Math.min(newX, modalRect.width / 2), -(imgRect.width - modalRect.width / 2) / currentScale);
+            } else {
+                newX = 0;
+            }
+
+            if (imgRect.height > modalRect.height) {
+                newY = Math.max(Math.min(newY, modalRect.height / 2), -(imgRect.height - modalRect.height / 2) / currentScale);
+            } else {
+                newY = 0;
+            }
+
+            translateX = newX;
+            translateY = newY;
+            img.style.left = `${translateX}px`;
+            img.style.top = `${translateY}px`;
+        }
+
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.href = currentImage;
+            link.download = currentImage.split('/').pop() + '.jpg'; // Extract image ID as filename
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Drag functionality
+        document.getElementById('modalImage').addEventListener('mousedown', function(e) {
+            if (currentScale > 1) {
+                isDragging = true;
+                startX = e.clientX - translateX;
+                startY = e.clientY - translateY;
+                this.classList.add('dragging');
+            }
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (isDragging) {
+                const modalImg = document.getElementById('modalImage');
+                const modal = document.getElementById('galleryModal');
+                const modalRect = modal.getBoundingClientRect();
+                const imgRect = modalImg.getBoundingClientRect();
+
+                let newX = e.clientX - startX;
+                let newY = e.clientY - startY;
+
+                // Constrain movement within modal bounds
+                if (imgRect.width > modalRect.width) {
+                    newX = Math.max(Math.min(newX, modalRect.width / 2), modalRect.width / 2 - imgRect.width);
+                } else {
+                    newX = 0;
+                }
+
+                if (imgRect.height > modalRect.height) {
+                    newY = Math.max(Math.min(newY, modalRect.height / 2), modalRect.height / 2 - imgRect.height);
+                } else {
+                    newY = 0;
+                }
+
+                translateX = newX;
+                translateY = newY;
+                modalImg.style.left = `${translateX}px`;
+                modalImg.style.top = `${translateY}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (isDragging) {
+                isDragging = false;
+                document.getElementById('modalImage').classList.remove('dragging');
+            }
+        });
+
+        // Close modal when clicking outside the image
+        document.getElementById('galleryModal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeGallery();
+            }
+        });
+    </script>
 </body>
 </html>

@@ -23,7 +23,8 @@ func UserDataHandler(w http.ResponseWriter, r *http.Request) {
 
     var username string
     var storedUUID string
-    err = db.DB.QueryRow("SELECT username, uuid FROM users WHERE uuid = ?", userUUID.String()).Scan(&username, &storedUUID)
+    var isAdmin bool
+    err = db.DB.QueryRow("SELECT username, uuid, is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&username, &storedUUID, &isAdmin)
     if err != nil || storedUUID != userUUID.String() {
         http.Redirect(w, r, "/login", http.StatusSeeOther)
         return
@@ -33,6 +34,7 @@ func UserDataHandler(w http.ResponseWriter, r *http.Request) {
         Title:   "User Data",
         Message: "Welcome, " + username,
         Year:    time.Now().Year(),
+        IsAdmin: isAdmin,
     }
     Tmpl.ExecuteTemplate(w, "user.html", data)
 }
@@ -40,14 +42,6 @@ func UserDataHandler(w http.ResponseWriter, r *http.Request) {
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
     cookie := &http.Cookie{
         Name:   "userUUID",
-        Value:  "",
-        Path:   "/",
-        MaxAge: -1,
-    }
-    http.SetCookie(w, cookie)
-
-    cookie = &http.Cookie{
-        Name:   "isAdmin",
         Value:  "",
         Path:   "/",
         MaxAge: -1,

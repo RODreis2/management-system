@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+    <header>
+        <h1>{{.Title}}</h1>
+    </header>
     <nav>
         <ul>
             <li><a href="/">Home</a></li>
@@ -19,16 +23,17 @@
             <li><a href="/closed_orders">Closed Orders</a></li>
         </ul>
     </nav>
-    <h1>{{.Title}}</h1>
-    {{if .Error}}
-    <p>{{.Error}}</p>
-    {{end}}
-    <form method="POST" enctype="multipart/form-data">
-        <input type="text" name="orderName" placeholder="Order Name" required>
-        <textarea name="items" placeholder="Items" rows="10" required></textarea>
-        <input type="file" name="images" multiple accept="image/*">
-        <button type="submit">Create Order</button>
-    </form>
+    <div class="container">
+        {{if .Error}}
+        <p class="error">{{.Error}}</p>
+        {{end}}
+        <form method="POST" enctype="multipart/form-data">
+            <input type="text" name="orderName" placeholder="Order Name" required>
+            <textarea name="items" placeholder="Items" rows="10" required></textarea>
+            <input type="file" name="images" multiple accept="image/*">
+            <button type="submit">Create Order</button>
+        </form>
+    </div>
     <footer>
         <p>User System - {{.Year}}</p>
     </footer>

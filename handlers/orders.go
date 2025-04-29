@@ -14,9 +14,29 @@ import (
 
 func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method == "GET" {
+        cookie, err := r.Cookie("userUUID")
+        if err != nil {
+            http.Redirect(w, r, "/login", http.StatusSeeOther)
+            return
+        }
+
+        userUUID, err := uuid.Parse(cookie.Value)
+        if err != nil {
+            http.Redirect(w, r, "/login", http.StatusSeeOther)
+            return
+        }
+
+        var isAdmin bool
+        err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin)
+        if err != nil {
+            http.Redirect(w, r, "/login", http.StatusSeeOther)
+            return
+        }
+
         data := PageData{
-            Title: "Create Order",
-            Year:  time.Now().Year(),
+            Title:   "Create Order",
+            Year:    time.Now().Year(),
+            IsAdmin: isAdmin,
         }
         Tmpl.ExecuteTemplate(w, "create_order.html", data)
         return
@@ -120,6 +140,25 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func OrdersHandler(w http.ResponseWriter, r *http.Request) {
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
     rows, err := db.DB.Query("SELECT o.id, o.order_name, o.items, u.username FROM orders o JOIN users u ON o.user_id = u.id WHERE o.closed = FALSE")
     if err != nil {
         http.Error(w, "Error fetching orders", http.StatusInternalServerError)
@@ -152,11 +191,31 @@ func OrdersHandler(w http.ResponseWriter, r *http.Request) {
         Title:  "All Orders",
         Year:   time.Now().Year(),
         Orders: orders,
+        IsAdmin: isAdmin,
     }
     Tmpl.ExecuteTemplate(w, "orders.html", data)
 }
 
 func ClosedOrdersHandler(w http.ResponseWriter, r *http.Request) {
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
     rows, err := db.DB.Query("SELECT o.id, o.order_name, o.items, u.username FROM orders o JOIN users u ON o.user_id = u.id WHERE o.closed = TRUE")
     if err != nil {
         http.Error(w, "Error fetching closed orders", http.StatusInternalServerError)
@@ -189,11 +248,31 @@ func ClosedOrdersHandler(w http.ResponseWriter, r *http.Request) {
         Title:  "Closed Orders",
         Year:   time.Now().Year(),
         Orders: orders,
+        IsAdmin: isAdmin,
     }
     Tmpl.ExecuteTemplate(w, "closed_orders.html", data)
 }
 
 func ViewOrderHandler(w http.ResponseWriter, r *http.Request) {
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
     orderID := r.URL.Query().Get("id")
     if orderID == "" {
         http.Error(w, "Order ID is required", http.StatusBadRequest)
@@ -205,7 +284,7 @@ func ViewOrderHandler(w http.ResponseWriter, r *http.Request) {
     var items string
     var username string
     var closed bool
-    err := db.DB.QueryRow("SELECT o.id, o.order_name, o.items, u.username, o.closed FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?", orderID).Scan(&orderIDInt, &orderName, &items, &username, &closed)
+    err = db.DB.QueryRow("SELECT o.id, o.order_name, o.items, u.username, o.closed FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?", orderID).Scan(&orderIDInt, &orderName, &items, &username, &closed)
     if err != nil {
         http.Error(w, "Error fetching order", http.StatusInternalServerError)
         return
@@ -249,11 +328,31 @@ func ViewOrderHandler(w http.ResponseWriter, r *http.Request) {
         },
         Images:  images,
         OrderID: orderID,
+        IsAdmin: isAdmin,
     }
     Tmpl.ExecuteTemplate(w, "view_order.html", data)
 }
 
 func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
     orderID := r.URL.Query().Get("id")
     if orderID == "" {
         http.Error(w, "Order ID is required", http.StatusBadRequest)
@@ -261,7 +360,7 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     var closed bool
-    err := db.DB.QueryRow("SELECT closed FROM orders WHERE id = ?", orderID).Scan(&closed)
+    err = db.DB.QueryRow("SELECT closed FROM orders WHERE id = ?", orderID).Scan(&closed)
     if err != nil {
         http.Error(w, "Error fetching order status", http.StatusInternalServerError)
         return
@@ -317,6 +416,7 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
             },
             Images:  images,
             OrderID: orderID,
+            IsAdmin: isAdmin,
         }
         Tmpl.ExecuteTemplate(w, "edit_order.html", data)
         return
@@ -339,6 +439,7 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                 Year:    time.Now().Year(),
                 OrderID: orderID,
                 Error:   "Error updating order. Please try again.",
+                IsAdmin: isAdmin,
             }
             Tmpl.ExecuteTemplate(w, "edit_order.html", data)
             return
@@ -355,6 +456,7 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                     Year:    time.Now().Year(),
                     OrderID: orderID,
                     Error:   "Error uploading image. Please try again.",
+                    IsAdmin: isAdmin,
                 }
                 Tmpl.ExecuteTemplate(w, "edit_order.html", data)
                 return
@@ -369,6 +471,7 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                     Year:    time.Now().Year(),
                     OrderID: orderID,
                     Error:   "Error uploading image. Please try again.",
+                    IsAdmin: isAdmin,
                 }
                 Tmpl.ExecuteTemplate(w, "edit_order.html", data)
                 return
@@ -382,6 +485,7 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                     Year:    time.Now().Year(),
                     OrderID: orderID,
                     Error:   "Error uploading image. Please try again.",
+                    IsAdmin: isAdmin,
                 }
                 Tmpl.ExecuteTemplate(w, "edit_order.html", data)
                 return
