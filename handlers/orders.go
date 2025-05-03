@@ -1,6 +1,7 @@
 package handlers
 
 import (
+    "database/sql"
     "management-system/db"
     "net/http"
     "time"
@@ -14,9 +15,31 @@ import (
 
 func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method == "GET" {
+        cookie, err := r.Cookie("userUUID")
+        if err != nil {
+            http.Redirect(w, r, "/login", http.StatusSeeOther)
+            return
+        }
+
+        userUUID, err := uuid.Parse(cookie.Value)
+        if err != nil {
+            http.Redirect(w, r, "/login", http.StatusSeeOther)
+            return
+        }
+
+        var isAdmin bool
+        var theme string
+        err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
+        if err != nil {
+            http.Redirect(w, r, "/login", http.StatusSeeOther)
+            return
+        }
+
         data := PageData{
-            Title: "Create Order",
-            Year:  time.Now().Year(),
+            Title:   "Create Order",
+            Year:    time.Now().Year(),
+            IsAdmin: isAdmin,
+            Theme:   theme,
         }
         Tmpl.ExecuteTemplate(w, "create_order.html", data)
         return
@@ -25,11 +48,30 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method == "POST" {
         orderName := r.FormValue("orderName")
         items := r.FormValue("items")
+        deadlineStr := r.FormValue("deadline")
 
         // Handle multiline input
         items = strings.TrimSpace(items)
         items = strings.ReplaceAll(items, "\r\n", "\n")
         items = strings.ReplaceAll(items, "\r", "\n")
+
+        var deadline interface{}
+        if deadlineStr != "" {
+            parsedDeadline, err := time.Parse("2006-01-02T15:04", deadlineStr)
+            if err != nil {
+                log.Printf("Error parsing deadline: %v", err)
+                data := PageData{
+                    Title: "Create Order",
+                    Year:  time.Now().Year(),
+                    Error: "Invalid deadline format. Please use YYYY-MM-DD HH:MM.",
+                }
+                Tmpl.ExecuteTemplate(w, "create_order.html", data)
+                return
+            }
+            deadline = parsedDeadline
+        } else {
+            deadline = nil
+        }
 
         cookie, err := r.Cookie("userUUID")
         if err != nil {
@@ -50,7 +92,7 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        result, err := db.DB.Exec("INSERT INTO orders (order_name, items, user_id) VALUES (?, ?, ?)", orderName, items, userID)
+        result, err := db.DB.Exec("INSERT INTO orders (order_name, items, user_id, deadline) VALUES (?, ?, ?, ?)", orderName, items, userID, deadline)
         if err != nil {
             log.Printf("Error inserting order into database: %v", err)
             data := PageData{
@@ -120,7 +162,27 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func OrdersHandler(w http.ResponseWriter, r *http.Request) {
-    rows, err := db.DB.Query("SELECT o.id, o.order_name, o.items, u.username FROM orders o JOIN users u ON o.user_id = u.id WHERE o.closed = FALSE")
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    var theme string
+    err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    rows, err := db.DB.Query("SELECT o.id, o.order_name, o.items, u.username, o.deadline FROM orders o JOIN users u ON o.user_id = u.id WHERE o.closed = FALSE")
     if err != nil {
         http.Error(w, "Error fetching orders", http.StatusInternalServerError)
         return
@@ -128,72 +190,142 @@ func OrdersHandler(w http.ResponseWriter, r *http.Request) {
     defer rows.Close()
 
     var orders []struct {
-        ID        int
-        OrderName string
-        Items     string
-        Username  string
+        ID           int
+        OrderName    string
+        Items        string
+        Username     string
+        Deadline     string
+        NearDeadline bool
     }
 
+    currentTime := time.Now()
     for rows.Next() {
         var order struct {
-            ID        int
-            OrderName string
-            Items     string
-            Username  string
+            ID           int
+            OrderName    string
+            Items        string
+            Username     string
+            Deadline     string
+            NearDeadline bool
         }
-        if err := rows.Scan(&order.ID, &order.OrderName, &order.Items, &order.Username); err != nil {
+        var deadline sql.NullTime
+        if err := rows.Scan(&order.ID, &order.OrderName, &order.Items, &order.Username, &deadline); err != nil {
             http.Error(w, "Error scanning order data", http.StatusInternalServerError)
             return
+        }
+        if deadline.Valid {
+            order.Deadline = deadline.Time.Format("2006-01-02 15:04")
+            if deadline.Time.Sub(currentTime).Hours()/24 <= 10 {
+                order.NearDeadline = true
+            }
+        } else {
+            order.Deadline = "Not Set"
+            order.NearDeadline = false
         }
         orders = append(orders, order)
     }
 
     data := PageData{
-        Title:  "All Orders",
-        Year:   time.Now().Year(),
-        Orders: orders,
+        Title:    "All Orders",
+        Year:     time.Now().Year(),
+        Orders:   orders,
+        IsAdmin:  isAdmin,
+        Theme:    theme,
     }
     Tmpl.ExecuteTemplate(w, "orders.html", data)
 }
 
 func ClosedOrdersHandler(w http.ResponseWriter, r *http.Request) {
-    rows, err := db.DB.Query("SELECT o.id, o.order_name, o.items, u.username FROM orders o JOIN users u ON o.user_id = u.id WHERE o.closed = TRUE")
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    var theme string
+    err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    rows, err := db.DB.Query("SELECT o.id, o.order_name, o.items, u.username, o.deadline FROM orders o JOIN users u ON o.user_id = u.id WHERE o.closed = TRUE")
     if err != nil {
         http.Error(w, "Error fetching closed orders", http.StatusInternalServerError)
         return
     }
     defer rows.Close()
 
-    var orders []struct {
-        ID        int
-        OrderName string
-        Items     string
-        Username  string
+    var closedOrders []struct {
+        ID           int
+        OrderName    string
+        Items        string
+        Username     string
+        Deadline     string
+        NearDeadline bool
     }
 
     for rows.Next() {
         var order struct {
-            ID        int
-            OrderName string
-            Items     string
-            Username  string
+            ID           int
+            OrderName    string
+            Items        string
+            Username     string
+            Deadline     string
+            NearDeadline bool
         }
-        if err := rows.Scan(&order.ID, &order.OrderName, &order.Items, &order.Username); err != nil {
+        var deadline sql.NullTime
+        if err := rows.Scan(&order.ID, &order.OrderName, &order.Items, &order.Username, &deadline); err != nil {
             http.Error(w, "Error scanning order data", http.StatusInternalServerError)
             return
         }
-        orders = append(orders, order)
+        if deadline.Valid {
+            order.Deadline = deadline.Time.Format("2006-01-02 15:04")
+        } else {
+            order.Deadline = "Not Set"
+        }
+        order.NearDeadline = false // Not needed for closed orders
+        closedOrders = append(closedOrders, order)
     }
 
     data := PageData{
-        Title:  "Closed Orders",
-        Year:   time.Now().Year(),
-        Orders: orders,
+        Title:    "Closed Orders",
+        Year:     time.Now().Year(),
+        Orders:   closedOrders,
+        IsAdmin:  isAdmin,
+        Theme:    theme,
     }
     Tmpl.ExecuteTemplate(w, "closed_orders.html", data)
 }
 
 func ViewOrderHandler(w http.ResponseWriter, r *http.Request) {
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    var theme string
+    err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
     orderID := r.URL.Query().Get("id")
     if orderID == "" {
         http.Error(w, "Order ID is required", http.StatusBadRequest)
@@ -205,7 +337,8 @@ func ViewOrderHandler(w http.ResponseWriter, r *http.Request) {
     var items string
     var username string
     var closed bool
-    err := db.DB.QueryRow("SELECT o.id, o.order_name, o.items, u.username, o.closed FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?", orderID).Scan(&orderIDInt, &orderName, &items, &username, &closed)
+    var deadline sql.NullTime
+    err = db.DB.QueryRow("SELECT o.id, o.order_name, o.items, u.username, o.closed, o.deadline FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?", orderID).Scan(&orderIDInt, &orderName, &items, &username, &closed, &deadline)
     if err != nil {
         http.Error(w, "Error fetching order", http.StatusInternalServerError)
         return
@@ -231,6 +364,11 @@ func ViewOrderHandler(w http.ResponseWriter, r *http.Request) {
         images = append(images, "/image/"+strconv.Itoa(imageID))
     }
 
+    deadlineStr := "Not Set"
+    if deadline.Valid {
+        deadlineStr = deadline.Time.Format("2006-01-02 15:04")
+    }
+
     data := PageData{
         Title:   "Order Details",
         Year:    time.Now().Year(),
@@ -240,20 +378,44 @@ func ViewOrderHandler(w http.ResponseWriter, r *http.Request) {
             Items     string
             Username  string
             Closed    bool
+            Deadline  string
         }{
             ID:        orderIDInt,
             OrderName: orderName,
             Items:     itemsHTML,
             Username:  username,
             Closed:    closed,
+            Deadline:  deadlineStr,
         },
         Images:  images,
         OrderID: orderID,
+        IsAdmin: isAdmin,
+        Theme:   theme,
     }
     Tmpl.ExecuteTemplate(w, "view_order.html", data)
 }
 
 func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    var theme string
+    err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
     orderID := r.URL.Query().Get("id")
     if orderID == "" {
         http.Error(w, "Order ID is required", http.StatusBadRequest)
@@ -261,7 +423,7 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     var closed bool
-    err := db.DB.QueryRow("SELECT closed FROM orders WHERE id = ?", orderID).Scan(&closed)
+    err = db.DB.QueryRow("SELECT closed FROM orders WHERE id = ?", orderID).Scan(&closed)
     if err != nil {
         http.Error(w, "Error fetching order status", http.StatusInternalServerError)
         return
@@ -276,10 +438,16 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
         var orderName string
         var items string
         var username string
-        err := db.DB.QueryRow("SELECT o.id, o.order_name, o.items, u.username FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?", orderID).Scan(&orderIDInt, &orderName, &items, &username)
+        var deadline sql.NullTime
+        err := db.DB.QueryRow("SELECT o.id, o.order_name, o.items, u.username, o.deadline FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?", orderID).Scan(&orderIDInt, &orderName, &items, &username, &deadline)
         if err != nil {
             http.Error(w, "Error fetching order", http.StatusInternalServerError)
             return
+        }
+
+        deadlineStr := ""
+        if deadline.Valid {
+            deadlineStr = deadline.Time.Format("2006-01-02T15:04")
         }
 
         rows, err := db.DB.Query("SELECT id FROM order_images WHERE order_id = ?", orderID)
@@ -308,15 +476,19 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                 Items     string
                 Username  string
                 Closed    bool
+                Deadline  string
             }{
                 ID:        orderIDInt,
                 OrderName: orderName,
                 Items:     items,
                 Username:  username,
-                Closed:    false, // Since we already checked it's not closed
+                Closed:    false,
+                Deadline:  deadlineStr,
             },
             Images:  images,
             OrderID: orderID,
+            IsAdmin: isAdmin,
+            Theme:   theme,
         }
         Tmpl.ExecuteTemplate(w, "edit_order.html", data)
         return
@@ -325,13 +497,35 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method == "POST" {
         orderName := r.FormValue("orderName")
         items := r.FormValue("items")
+        deadlineStr := r.FormValue("deadline")
 
         // Handle multiline input
         items = strings.TrimSpace(items)
         items = strings.ReplaceAll(items, "\r\n", "\n")
         items = strings.ReplaceAll(items, "\r", "\n")
 
-        _, err := db.DB.Exec("UPDATE orders SET order_name = ?, items = ? WHERE id = ?", orderName, items, orderID)
+        var deadline interface{}
+        if deadlineStr != "" {
+            parsedDeadline, err := time.Parse("2006-01-02T15:04", deadlineStr)
+            if err != nil {
+                log.Printf("Error parsing deadline: %v", err)
+                data := PageData{
+                    Title:   "Edit Order",
+                    Year:    time.Now().Year(),
+                    OrderID: orderID,
+                    Error:   "Invalid deadline format. Please use YYYY-MM-DD HH:MM.",
+                    IsAdmin: isAdmin,
+                    Theme:   theme,
+                }
+                Tmpl.ExecuteTemplate(w, "edit_order.html", data)
+                return
+            }
+            deadline = parsedDeadline
+        } else {
+            deadline = nil
+        }
+
+        _, err := db.DB.Exec("UPDATE orders SET order_name = ?, items = ?, deadline = ? WHERE id = ?", orderName, items, deadline, orderID)
         if err != nil {
             log.Printf("Error updating order in database: %v", err)
             data := PageData{
@@ -339,6 +533,8 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                 Year:    time.Now().Year(),
                 OrderID: orderID,
                 Error:   "Error updating order. Please try again.",
+                IsAdmin: isAdmin,
+                Theme:   theme,
             }
             Tmpl.ExecuteTemplate(w, "edit_order.html", data)
             return
@@ -355,6 +551,8 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                     Year:    time.Now().Year(),
                     OrderID: orderID,
                     Error:   "Error uploading image. Please try again.",
+                    IsAdmin: isAdmin,
+                    Theme:   theme,
                 }
                 Tmpl.ExecuteTemplate(w, "edit_order.html", data)
                 return
@@ -369,6 +567,8 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                     Year:    time.Now().Year(),
                     OrderID: orderID,
                     Error:   "Error uploading image. Please try again.",
+                    IsAdmin: isAdmin,
+                    Theme:   theme,
                 }
                 Tmpl.ExecuteTemplate(w, "edit_order.html", data)
                 return
@@ -382,6 +582,8 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                     Year:    time.Now().Year(),
                     OrderID: orderID,
                     Error:   "Error uploading image. Please try again.",
+                    IsAdmin: isAdmin,
+                    Theme:   theme,
                 }
                 Tmpl.ExecuteTemplate(w, "edit_order.html", data)
                 return

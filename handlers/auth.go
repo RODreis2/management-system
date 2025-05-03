@@ -15,6 +15,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Login",
             Year:  time.Now().Year(),
+            Theme: "light",
         }
         Tmpl.ExecuteTemplate(w, "login.html", data)
         return
@@ -31,6 +32,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Login",
             Year:  time.Now().Year(),
+            Theme: "light",
             Error: "Invalid username or password",
         }
         Tmpl.ExecuteTemplate(w, "login.html", data)
@@ -45,6 +47,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Login",
             Year:  time.Now().Year(),
+            Theme: "light",
             Error: "Error updating user UUID",
         }
         Tmpl.ExecuteTemplate(w, "login.html", data)
@@ -60,24 +63,28 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         MaxAge:   3600, // 1 hour
     })
 
-    if isAdmin {
-        http.SetCookie(w, &http.Cookie{
-            Name:     "isAdmin",
-            Value:    "true",
-            Path:     "/",
-            HttpOnly: true,
-            MaxAge:   3600, // 1 hour
-        })
-    }
-
     http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method == "GET" {
         // Check if the user is an admin
-        cookie, err := r.Cookie("isAdmin")
-        if err != nil || cookie.Value != "true" {
+        cookie, err := r.Cookie("userUUID")
+        if err != nil {
+            http.Redirect(w, r, "/", http.StatusSeeOther)
+            return
+        }
+
+        userUUID, err := uuid.Parse(cookie.Value)
+        if err != nil {
+            http.Redirect(w, r, "/", http.StatusSeeOther)
+            return
+        }
+
+        var isAdmin bool
+        var theme string
+        err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
+        if err != nil || !isAdmin {
             http.Redirect(w, r, "/", http.StatusSeeOther)
             return
         }
@@ -85,14 +92,29 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Register",
             Year:  time.Now().Year(),
+            Theme: theme,
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)
         return
     }
 
     // Check if the user is an admin
-    cookie, err := r.Cookie("isAdmin")
-    if err != nil || cookie.Value != "true" {
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    var theme string
+    err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
+    if err != nil || !isAdmin {
         http.Redirect(w, r, "/", http.StatusSeeOther)
         return
     }
@@ -107,6 +129,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Register",
             Year:  time.Now().Year(),
+            Theme: theme,
             Error: "Username already exists. Please choose a different one.",
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)
@@ -119,19 +142,21 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Register",
             Year:  time.Now().Year(),
+            Theme: theme,
             Error: "Error processing registration",
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)
         return
     }
 
-    userUUID := uuid.New().String()
-    _, err = db.DB.Exec("INSERT INTO users (username, password, uuid) VALUES (?, ?, ?)", username, string(hashedPassword), userUUID)
+    userUUIDStr := uuid.New().String()
+    _, err = db.DB.Exec("INSERT INTO users (username, password, uuid) VALUES (?, ?, ?)", username, string(hashedPassword), userUUIDStr)
     if err != nil {
         log.Printf("Error inserting user into database: %v", err)
         data := PageData{
             Title: "Register",
             Year:  time.Now().Year(),
+            Theme: theme,
             Error: "Registration failed. Please try again.",
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)

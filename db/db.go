@@ -24,7 +24,8 @@ func InitDB() {
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         uuid TEXT UNIQUE,
-        is_admin BOOLEAN DEFAULT FALSE
+        is_admin BOOLEAN DEFAULT FALSE,
+        theme TEXT DEFAULT 'light'
     );`
     _, err = DB.Exec(createUsersTable)
     if err != nil {
@@ -38,6 +39,8 @@ func InitDB() {
         items TEXT NOT NULL,
         user_id INTEGER NOT NULL,
         closed BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deadline TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
     );`
     _, err = DB.Exec(createOrdersTable)
