@@ -51,9 +51,11 @@ func main() {
 }
 
 func serveLogoHandler(w http.ResponseWriter, r *http.Request) {
+    log.Println("Request received for /logo")
     var logoData []byte
     err := db.DB.QueryRow("SELECT image_data FROM site_settings WHERE setting_key = 'site_logo'").Scan(&logoData)
     if err != nil || len(logoData) == 0 {
+        log.Println("No logo data found, redirecting to default logo")
         http.Redirect(w, r, "/static/logo.png", http.StatusTemporaryRedirect)
         return
     }

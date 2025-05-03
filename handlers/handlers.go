@@ -6,6 +6,7 @@ import (
     "net/http"
     "time"
     "database/sql"
+    "log"
 
     "github.com/google/uuid"
 )
@@ -94,6 +95,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
             if err == nil {
                 isAdmin = adminFlag
                 theme = userTheme
+                log.Printf("User %s accessed index page, admin: %v", userUUID.String(), isAdmin)
 
                 // Fetch up to 5 orders nearing deadline for "Next to Expire" section, ordered by deadline ascending
                 rows, err := db.DB.Query("SELECT id, order_name, deadline FROM orders WHERE closed = FALSE AND deadline IS NOT NULL ORDER BY deadline ASC LIMIT 5")
@@ -111,6 +113,8 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
                             nextToExpire = append(nextToExpire, order)
                         }
                     }
+                } else {
+                    log.Printf("Error fetching next to expire orders: %v", err)
                 }
             }
         }
