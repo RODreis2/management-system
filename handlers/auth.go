@@ -4,18 +4,26 @@ import (
     "management-system/db"
     "net/http"
     "time"
+    "log"
 
     "github.com/google/uuid"
     "golang.org/x/crypto/bcrypt"
-    "log"
 )
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
+    var logoURL string
+    var logoData []byte
+    err := db.DB.QueryRow("SELECT image_data FROM site_settings WHERE setting_key = 'site_logo'").Scan(&logoData)
+    if err == nil && len(logoData) > 0 {
+        logoURL = "/logo"
+    }
+
     if r.Method == "GET" {
         data := PageData{
-            Title: "Login",
-            Year:  time.Now().Year(),
-            Theme: "light",
+            Title:   "Login",
+            Year:    time.Now().Year(),
+            Theme:   "light",
+            LogoURL: logoURL,
         }
         Tmpl.ExecuteTemplate(w, "login.html", data)
         return
@@ -27,13 +35,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
     var storedPassword string
     var userUUID string
     var isAdmin bool
-    err := db.DB.QueryRow("SELECT password, uuid, is_admin FROM users WHERE username = ?", username).Scan(&storedPassword, &userUUID, &isAdmin)
+    err = db.DB.QueryRow("SELECT password, uuid, is_admin FROM users WHERE username = ?", username).Scan(&storedPassword, &userUUID, &isAdmin)
     if err != nil || bcrypt.CompareHashAndPassword([]byte(storedPassword), []byte(password)) != nil {
         data := PageData{
-            Title: "Login",
-            Year:  time.Now().Year(),
-            Theme: "light",
-            Error: "Invalid username or password",
+            Title:   "Login",
+            Year:    time.Now().Year(),
+            Theme:   "light",
+            LogoURL: logoURL,
+            Error:   "Invalid username or password",
         }
         Tmpl.ExecuteTemplate(w, "login.html", data)
         return
@@ -45,10 +54,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         log.Printf("Error updating UUID: %v", err)
         data := PageData{
-            Title: "Login",
-            Year:  time.Now().Year(),
-            Theme: "light",
-            Error: "Error updating user UUID",
+            Title:   "Login",
+            Year:    time.Now().Year(),
+            Theme:   "light",
+            LogoURL: logoURL,
+            Error:   "Error updating user UUID",
         }
         Tmpl.ExecuteTemplate(w, "login.html", data)
         return
@@ -89,10 +99,19 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
+        // Fetch the logo URL from the database if available
+        var logoURL string
+        var logoData []byte
+        err = db.DB.QueryRow("SELECT image_data FROM site_settings WHERE setting_key = 'site_logo'").Scan(&logoData)
+        if err == nil && len(logoData) > 0 {
+            logoURL = "/logo"
+        }
+
         data := PageData{
-            Title: "Register",
-            Year:  time.Now().Year(),
-            Theme: theme,
+            Title:   "Register",
+            Year:    time.Now().Year(),
+            Theme:   theme,
+            LogoURL: logoURL,
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)
         return
@@ -119,6 +138,14 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // Fetch the logo URL from the database if available
+    var logoURL string
+    var logoData []byte
+    err = db.DB.QueryRow("SELECT image_data FROM site_settings WHERE setting_key = 'site_logo'").Scan(&logoData)
+    if err == nil && len(logoData) > 0 {
+        logoURL = "/logo"
+    }
+
     username := r.FormValue("username")
     password := r.FormValue("password")
 
@@ -127,10 +154,11 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
     err = db.DB.QueryRow("SELECT username FROM users WHERE username = ?", username).Scan(&existingUsername)
     if err == nil {
         data := PageData{
-            Title: "Register",
-            Year:  time.Now().Year(),
-            Theme: theme,
-            Error: "Username already exists. Please choose a different one.",
+            Title:   "Register",
+            Year:    time.Now().Year(),
+            Theme:   theme,
+            LogoURL: logoURL,
+            Error:   "Username already exists. Please choose a different one.",
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)
         return
@@ -140,10 +168,11 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         log.Printf("Error hashing password: %v", err)
         data := PageData{
-            Title: "Register",
-            Year:  time.Now().Year(),
-            Theme: theme,
-            Error: "Error processing registration",
+            Title:   "Register",
+            Year:    time.Now().Year(),
+            Theme:   theme,
+            LogoURL: logoURL,
+            Error:   "Error processing registration",
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)
         return
@@ -154,10 +183,11 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         log.Printf("Error inserting user into database: %v", err)
         data := PageData{
-            Title: "Register",
-            Year:  time.Now().Year(),
-            Theme: theme,
-            Error: "Registration failed. Please try again.",
+            Title:   "Register",
+            Year:    time.Now().Year(),
+            Theme:   theme,
+            LogoURL: logoURL,
+            Error:   "Registration failed. Please try again.",
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)
         return

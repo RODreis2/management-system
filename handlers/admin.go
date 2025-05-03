@@ -4,10 +4,10 @@ import (
     "management-system/db"
     "net/http"
     "time"
+    "log"
 
     "github.com/google/uuid"
     "golang.org/x/crypto/bcrypt"
-    "log"
 )
 
 func AdminHandler(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +31,14 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // Fetch the logo URL from the database if available
+    var logoURL string
+    var logoData []byte
+    err = db.DB.QueryRow("SELECT image_data FROM site_settings WHERE setting_key = 'site_logo'").Scan(&logoData)
+    if err == nil && len(logoData) > 0 {
+        logoURL = "/logo"
+    }
+
     if r.Method == "POST" {
         username := r.FormValue("username")
         password := r.FormValue("password")
@@ -44,6 +52,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
                 Message: "Manage Users",
                 Year:    time.Now().Year(),
                 Theme:   theme,
+                LogoURL: logoURL,
                 Error:   "Username already exists. Please choose a different one.",
             }
             Tmpl.ExecuteTemplate(w, "admin.html", data)
@@ -58,6 +67,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
                 Message: "Manage Users",
                 Year:    time.Now().Year(),
                 Theme:   theme,
+                LogoURL: logoURL,
                 Error:   "Error processing registration",
             }
             Tmpl.ExecuteTemplate(w, "admin.html", data)
@@ -73,6 +83,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
                 Message: "Manage Users",
                 Year:    time.Now().Year(),
                 Theme:   theme,
+                LogoURL: logoURL,
                 Error:   "Registration failed. Please try again.",
             }
             Tmpl.ExecuteTemplate(w, "admin.html", data)
@@ -100,6 +111,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
                 Message: "Manage Users",
                 Year:    time.Now().Year(),
                 Theme:   theme,
+                LogoURL: logoURL,
                 Error:   "Cannot delete an admin account.",
             }
             rows, err := db.DB.Query("SELECT id, username, uuid FROM users")
@@ -141,6 +153,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
                 Message: "Manage Users",
                 Year:    time.Now().Year(),
                 Theme:   theme,
+                LogoURL: logoURL,
                 Error:   "Error deleting user. Please try again.",
             }
             Tmpl.ExecuteTemplate(w, "admin.html", data)
@@ -183,6 +196,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
         Year:    time.Now().Year(),
         Users:   users,
         Theme:   theme,
+        LogoURL: logoURL,
     }
     Tmpl.ExecuteTemplate(w, "admin.html", data)
 }

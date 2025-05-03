@@ -23,6 +23,7 @@ type PageData struct {
     }
     IsAdmin  bool
     Theme    string
+    LogoURL  string
     Orders   []struct {
         ID           int
         OrderName    string
@@ -52,6 +53,12 @@ var Tmpl = template.Must(template.New("").Funcs(template.FuncMap{
     "safeHTML": func(html string) template.HTML {
         return template.HTML(html)
     },
+    "default": func(value, defaultValue string) string {
+        if value == "" {
+            return defaultValue
+        }
+        return value
+    },
 }).ParseFiles(
     "templates/index.html",
     "templates/login.html",
@@ -71,6 +78,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
     loggedIn := err == nil
     isAdmin := false
     theme := "light"
+    logoURL := ""
     var nextToExpire []struct {
         ID           int
         OrderName    string
@@ -108,6 +116,13 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
         }
     }
 
+    // Fetch the logo URL from the database if available
+    var logoData []byte
+    err = db.DB.QueryRow("SELECT image_data FROM site_settings WHERE setting_key = 'site_logo'").Scan(&logoData)
+    if err == nil && len(logoData) > 0 {
+        logoURL = "/logo"
+    }
+
     data := PageData{
         Title:        "Welcome",
         Message:      "Hello, user! Please login or register.",
@@ -115,6 +130,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
         LoggedIn:     loggedIn,
         IsAdmin:      isAdmin,
         Theme:        theme,
+        LogoURL:      logoURL,
         NextToExpire: nextToExpire,
     }
     Tmpl.ExecuteTemplate(w, "index.html", data)

@@ -5,41 +5,50 @@ import (
     "management-system/db"
     "net/http"
     "time"
-    "github.com/google/uuid"
     "log"
     "io"
     "strconv"
+    "github.com/google/uuid"
     "github.com/russross/blackfriday/v2"
     "strings"
 )
 
 func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
+    cookie, err := r.Cookie("userUUID")
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    userUUID, err := uuid.Parse(cookie.Value)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    var isAdmin bool
+    var theme string
+    err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
+    if err != nil {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
+
+    // Fetch the logo URL from the database if available
+    var logoURL string
+    var logoData []byte
+    err = db.DB.QueryRow("SELECT image_data FROM site_settings WHERE setting_key = 'site_logo'").Scan(&logoData)
+    if err == nil && len(logoData) > 0 {
+        logoURL = "/logo"
+    }
+
     if r.Method == "GET" {
-        cookie, err := r.Cookie("userUUID")
-        if err != nil {
-            http.Redirect(w, r, "/login", http.StatusSeeOther)
-            return
-        }
-
-        userUUID, err := uuid.Parse(cookie.Value)
-        if err != nil {
-            http.Redirect(w, r, "/login", http.StatusSeeOther)
-            return
-        }
-
-        var isAdmin bool
-        var theme string
-        err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
-        if err != nil {
-            http.Redirect(w, r, "/login", http.StatusSeeOther)
-            return
-        }
-
         data := PageData{
             Title:   "Create Order",
             Year:    time.Now().Year(),
             IsAdmin: isAdmin,
             Theme:   theme,
+            LogoURL: logoURL,
         }
         Tmpl.ExecuteTemplate(w, "create_order.html", data)
         return
@@ -61,9 +70,12 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
             if err != nil {
                 log.Printf("Error parsing deadline: %v", err)
                 data := PageData{
-                    Title: "Create Order",
-                    Year:  time.Now().Year(),
-                    Error: "Invalid deadline format. Please use YYYY-MM-DD HH:MM.",
+                    Title:   "Create Order",
+                    Year:    time.Now().Year(),
+                    IsAdmin: isAdmin,
+                    Theme:   theme,
+                    LogoURL: logoURL,
+                    Error:   "Invalid deadline format. Please use YYYY-MM-DD HH:MM.",
                 }
                 Tmpl.ExecuteTemplate(w, "create_order.html", data)
                 return
@@ -71,18 +83,6 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
             deadline = parsedDeadline
         } else {
             deadline = nil
-        }
-
-        cookie, err := r.Cookie("userUUID")
-        if err != nil {
-            http.Redirect(w, r, "/login", http.StatusSeeOther)
-            return
-        }
-
-        userUUID, err := uuid.Parse(cookie.Value)
-        if err != nil {
-            http.Redirect(w, r, "/login", http.StatusSeeOther)
-            return
         }
 
         var userID int
@@ -96,9 +96,12 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
         if err != nil {
             log.Printf("Error inserting order into database: %v", err)
             data := PageData{
-                Title: "Create Order",
-                Year:  time.Now().Year(),
-                Error: "Error creating order. Please try again.",
+                Title:   "Create Order",
+                Year:    time.Now().Year(),
+                IsAdmin: isAdmin,
+                Theme:   theme,
+                LogoURL: logoURL,
+                Error:   "Error creating order. Please try again.",
             }
             Tmpl.ExecuteTemplate(w, "create_order.html", data)
             return
@@ -108,9 +111,12 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
         if err != nil {
             log.Printf("Error getting last insert ID: %v", err)
             data := PageData{
-                Title: "Create Order",
-                Year:  time.Now().Year(),
-                Error: "Error creating order. Please try again.",
+                Title:   "Create Order",
+                Year:    time.Now().Year(),
+                IsAdmin: isAdmin,
+                Theme:   theme,
+                LogoURL: logoURL,
+                Error:   "Error creating order. Please try again.",
             }
             Tmpl.ExecuteTemplate(w, "create_order.html", data)
             return
@@ -123,9 +129,12 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
             if err != nil {
                 log.Printf("Error opening image file: %v", err)
                 data := PageData{
-                    Title: "Create Order",
-                    Year:  time.Now().Year(),
-                    Error: "Error uploading image. Please try again.",
+                    Title:   "Create Order",
+                    Year:    time.Now().Year(),
+                    IsAdmin: isAdmin,
+                    Theme:   theme,
+                    LogoURL: logoURL,
+                    Error:   "Error uploading image. Please try again.",
                 }
                 Tmpl.ExecuteTemplate(w, "create_order.html", data)
                 return
@@ -136,9 +145,12 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
             if err != nil {
                 log.Printf("Error reading image file: %v", err)
                 data := PageData{
-                    Title: "Create Order",
-                    Year:  time.Now().Year(),
-                    Error: "Error uploading image. Please try again.",
+                    Title:   "Create Order",
+                    Year:    time.Now().Year(),
+                    IsAdmin: isAdmin,
+                    Theme:   theme,
+                    LogoURL: logoURL,
+                    Error:   "Error uploading image. Please try again.",
                 }
                 Tmpl.ExecuteTemplate(w, "create_order.html", data)
                 return
@@ -148,9 +160,12 @@ func CreateOrderHandler(w http.ResponseWriter, r *http.Request) {
             if err != nil {
                 log.Printf("Error inserting image into database: %v", err)
                 data := PageData{
-                    Title: "Create Order",
-                    Year:  time.Now().Year(),
-                    Error: "Error uploading image. Please try again.",
+                    Title:   "Create Order",
+                    Year:    time.Now().Year(),
+                    IsAdmin: isAdmin,
+                    Theme:   theme,
+                    LogoURL: logoURL,
+                    Error:   "Error uploading image. Please try again.",
                 }
                 Tmpl.ExecuteTemplate(w, "create_order.html", data)
                 return
@@ -180,6 +195,14 @@ func OrdersHandler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         http.Redirect(w, r, "/login", http.StatusSeeOther)
         return
+    }
+
+    // Fetch the logo URL from the database if available
+    var logoURL string
+    var logoData []byte
+    err = db.DB.QueryRow("SELECT image_data FROM site_settings WHERE setting_key = 'site_logo'").Scan(&logoData)
+    if err == nil && len(logoData) > 0 {
+        logoURL = "/logo"
     }
 
     rows, err := db.DB.Query("SELECT o.id, o.order_name, o.items, u.username, o.deadline FROM orders o JOIN users u ON o.user_id = u.id WHERE o.closed = FALSE")
@@ -231,6 +254,7 @@ func OrdersHandler(w http.ResponseWriter, r *http.Request) {
         Orders:   orders,
         IsAdmin:  isAdmin,
         Theme:    theme,
+        LogoURL:  logoURL,
     }
     Tmpl.ExecuteTemplate(w, "orders.html", data)
 }
@@ -254,6 +278,14 @@ func ClosedOrdersHandler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         http.Redirect(w, r, "/login", http.StatusSeeOther)
         return
+    }
+
+    // Fetch the logo URL from the database if available
+    var logoURL string
+    var logoData []byte
+    err = db.DB.QueryRow("SELECT image_data FROM site_settings WHERE setting_key = 'site_logo'").Scan(&logoData)
+    if err == nil && len(logoData) > 0 {
+        logoURL = "/logo"
     }
 
     rows, err := db.DB.Query("SELECT o.id, o.order_name, o.items, u.username, o.deadline FROM orders o JOIN users u ON o.user_id = u.id WHERE o.closed = TRUE")
@@ -301,6 +333,7 @@ func ClosedOrdersHandler(w http.ResponseWriter, r *http.Request) {
         Orders:   closedOrders,
         IsAdmin:  isAdmin,
         Theme:    theme,
+        LogoURL:  logoURL,
     }
     Tmpl.ExecuteTemplate(w, "closed_orders.html", data)
 }
@@ -324,6 +357,14 @@ func ViewOrderHandler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         http.Redirect(w, r, "/login", http.StatusSeeOther)
         return
+    }
+
+    // Fetch the logo URL from the database if available
+    var logoURL string
+    var logoData []byte
+    err = db.DB.QueryRow("SELECT image_data FROM site_settings WHERE setting_key = 'site_logo'").Scan(&logoData)
+    if err == nil && len(logoData) > 0 {
+        logoURL = "/logo"
     }
 
     orderID := r.URL.Query().Get("id")
@@ -391,6 +432,7 @@ func ViewOrderHandler(w http.ResponseWriter, r *http.Request) {
         OrderID: orderID,
         IsAdmin: isAdmin,
         Theme:   theme,
+        LogoURL: logoURL,
     }
     Tmpl.ExecuteTemplate(w, "view_order.html", data)
 }
@@ -414,6 +456,14 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         http.Redirect(w, r, "/login", http.StatusSeeOther)
         return
+    }
+
+    // Fetch the logo URL from the database if available
+    var logoURL string
+    var logoData []byte
+    err = db.DB.QueryRow("SELECT image_data FROM site_settings WHERE setting_key = 'site_logo'").Scan(&logoData)
+    if err == nil && len(logoData) > 0 {
+        logoURL = "/logo"
     }
 
     orderID := r.URL.Query().Get("id")
@@ -489,6 +539,7 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
             OrderID: orderID,
             IsAdmin: isAdmin,
             Theme:   theme,
+            LogoURL: logoURL,
         }
         Tmpl.ExecuteTemplate(w, "edit_order.html", data)
         return
@@ -513,9 +564,10 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                     Title:   "Edit Order",
                     Year:    time.Now().Year(),
                     OrderID: orderID,
-                    Error:   "Invalid deadline format. Please use YYYY-MM-DD HH:MM.",
                     IsAdmin: isAdmin,
                     Theme:   theme,
+                    LogoURL: logoURL,
+                    Error:   "Invalid deadline format. Please use YYYY-MM-DD HH:MM.",
                 }
                 Tmpl.ExecuteTemplate(w, "edit_order.html", data)
                 return
@@ -532,9 +584,10 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                 Title:   "Edit Order",
                 Year:    time.Now().Year(),
                 OrderID: orderID,
-                Error:   "Error updating order. Please try again.",
                 IsAdmin: isAdmin,
                 Theme:   theme,
+                LogoURL: logoURL,
+                Error:   "Error updating order. Please try again.",
             }
             Tmpl.ExecuteTemplate(w, "edit_order.html", data)
             return
@@ -550,9 +603,10 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                     Title:   "Edit Order",
                     Year:    time.Now().Year(),
                     OrderID: orderID,
-                    Error:   "Error uploading image. Please try again.",
                     IsAdmin: isAdmin,
                     Theme:   theme,
+                    LogoURL: logoURL,
+                    Error:   "Error uploading image. Please try again.",
                 }
                 Tmpl.ExecuteTemplate(w, "edit_order.html", data)
                 return
@@ -566,9 +620,10 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                     Title:   "Edit Order",
                     Year:    time.Now().Year(),
                     OrderID: orderID,
-                    Error:   "Error uploading image. Please try again.",
                     IsAdmin: isAdmin,
                     Theme:   theme,
+                    LogoURL: logoURL,
+                    Error:   "Error uploading image. Please try again.",
                 }
                 Tmpl.ExecuteTemplate(w, "edit_order.html", data)
                 return
@@ -581,9 +636,10 @@ func EditOrderHandler(w http.ResponseWriter, r *http.Request) {
                     Title:   "Edit Order",
                     Year:    time.Now().Year(),
                     OrderID: orderID,
-                    Error:   "Error uploading image. Please try again.",
                     IsAdmin: isAdmin,
                     Theme:   theme,
+                    LogoURL: logoURL,
+                    Error:   "Error uploading image. Please try again.",
                 }
                 Tmpl.ExecuteTemplate(w, "edit_order.html", data)
                 return
