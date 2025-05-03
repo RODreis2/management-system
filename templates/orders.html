@@ -5,6 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}}</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Inline critical CSS to prevent flash of white */
+        body {
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        body.dark-mode {
+            background-color: #1e1e1e !important;
+            color: #e0e0e0 !important;
+        }
+    </style>
+    <script>
+        // Apply theme immediately to prevent flash of white
+        (function() {
+            const theme = '{{.Theme}}';
+            console.log("Theme value:", theme); // Debug log to check theme value
+            if (theme === 'dark') {
+                // Apply dark mode as soon as possible
+                document.documentElement.classList.add('dark-mode');
+                // Fallback to apply to body once it's available
+                if (document.body) {
+                    document.body.classList.add('dark-mode');
+                } else {
+                    window.addEventListener('DOMContentLoaded', function() {
+                        document.body.classList.add('dark-mode');
+                    });
+                }
+            }
+        })();
+    </script>
 </head>
 <body>
     <header>
@@ -21,14 +51,21 @@
             <li><a href="/create_order">Create Order</a></li>
             <li><a href="/orders">All Orders</a></li>
             <li><a href="/closed_orders">Closed Orders</a></li>
+            <li><a href="/settings">Settings</a></li>
         </ul>
     </nav>
     <div class="container">
+        {{if .Orders}}
         <ul>
             {{range .Orders}}
-            <li>ID: {{.ID}}, Order Name: {{.OrderName}}, Items: {{.Items}}, Created by: {{.Username}} <a href="/view_order?id={{.ID}}">View</a></li>
+            <li {{if .NearDeadline}}class="near-deadline"{{end}}>
+                ID: {{.ID}}, Order Name: {{.OrderName}}, Items: {{.Items}}, Created by: {{.Username}}, Deadline: {{.Deadline}} <a href="/view_order?id={{.ID}}">View</a>
+            </li>
             {{end}}
         </ul>
+        {{else}}
+        <p class="no-data">No open orders available at the moment. <a href="/create_order">Create a new order</a>.</p>
+        {{end}}
     </div>
     <footer>
         <p>User System - {{.Year}}</p>

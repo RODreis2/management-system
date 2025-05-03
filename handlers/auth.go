@@ -15,6 +15,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Login",
             Year:  time.Now().Year(),
+            Theme: "light",
         }
         Tmpl.ExecuteTemplate(w, "login.html", data)
         return
@@ -31,6 +32,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Login",
             Year:  time.Now().Year(),
+            Theme: "light",
             Error: "Invalid username or password",
         }
         Tmpl.ExecuteTemplate(w, "login.html", data)
@@ -45,6 +47,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Login",
             Year:  time.Now().Year(),
+            Theme: "light",
             Error: "Error updating user UUID",
         }
         Tmpl.ExecuteTemplate(w, "login.html", data)
@@ -79,7 +82,8 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         var isAdmin bool
-        err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin)
+        var theme string
+        err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
         if err != nil || !isAdmin {
             http.Redirect(w, r, "/", http.StatusSeeOther)
             return
@@ -88,6 +92,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Register",
             Year:  time.Now().Year(),
+            Theme: theme,
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)
         return
@@ -107,7 +112,8 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     var isAdmin bool
-    err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin)
+    var theme string
+    err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
     if err != nil || !isAdmin {
         http.Redirect(w, r, "/", http.StatusSeeOther)
         return
@@ -123,6 +129,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Register",
             Year:  time.Now().Year(),
+            Theme: theme,
             Error: "Username already exists. Please choose a different one.",
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)
@@ -135,6 +142,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Register",
             Year:  time.Now().Year(),
+            Theme: theme,
             Error: "Error processing registration",
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)
@@ -148,6 +156,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
         data := PageData{
             Title: "Register",
             Year:  time.Now().Year(),
+            Theme: theme,
             Error: "Registration failed. Please try again.",
         }
         Tmpl.ExecuteTemplate(w, "register.html", data)

@@ -5,6 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}}</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Inline critical CSS to prevent flash of white */
+        body {
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        body.dark-mode {
+            background-color: #1e1e1e !important;
+            color: #e0e0e0 !important;
+        }
+    </style>
+    <script>
+        // Apply theme immediately to prevent flash of white
+        (function() {
+            const theme = '{{.Theme}}';
+            console.log("Theme value:", theme); // Debug log to check theme value
+            if (theme === 'dark') {
+                // Apply dark mode as soon as possible
+                document.documentElement.classList.add('dark-mode');
+                // Fallback to apply to body once it's available
+                if (document.body) {
+                    document.body.classList.add('dark-mode');
+                } else {
+                    window.addEventListener('DOMContentLoaded', function() {
+                        document.body.classList.add('dark-mode');
+                    });
+                }
+            }
+        })();
+    </script>
 </head>
 <body>
     <header>
@@ -21,6 +51,7 @@
             <li><a href="/create_order">Create Order</a></li>
             <li><a href="/orders">All Orders</a></li>
             <li><a href="/closed_orders">Closed Orders</a></li>
+            <li><a href="/settings">Settings</a></li>
         </ul>
     </nav>
     <div class="container">
@@ -29,6 +60,7 @@
         <p>Order Name: {{.Order.OrderName}}</p>
         <p>Items: <div>{{.Order.Items | safeHTML}}</div></p>
         <p>Created by: {{.Order.Username}}</p>
+        <p>Deadline: {{.Order.Deadline}}</p>
         {{if not .Order.Closed}}
         <a href="/edit_order?id={{.OrderID}}">Edit Order</a>
         <form method="POST" action="/close_order">

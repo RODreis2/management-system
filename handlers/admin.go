@@ -24,7 +24,8 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     var isAdmin bool
-    err = db.DB.QueryRow("SELECT is_admin FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin)
+    var theme string
+    err = db.DB.QueryRow("SELECT is_admin, theme FROM users WHERE uuid = ?", userUUID.String()).Scan(&isAdmin, &theme)
     if err != nil || !isAdmin {
         http.Redirect(w, r, "/", http.StatusSeeOther)
         return
@@ -42,6 +43,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
                 Title:   "Admin Panel",
                 Message: "Manage Users",
                 Year:    time.Now().Year(),
+                Theme:   theme,
                 Error:   "Username already exists. Please choose a different one.",
             }
             Tmpl.ExecuteTemplate(w, "admin.html", data)
@@ -55,6 +57,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
                 Title:   "Admin Panel",
                 Message: "Manage Users",
                 Year:    time.Now().Year(),
+                Theme:   theme,
                 Error:   "Error processing registration",
             }
             Tmpl.ExecuteTemplate(w, "admin.html", data)
@@ -69,6 +72,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
                 Title:   "Admin Panel",
                 Message: "Manage Users",
                 Year:    time.Now().Year(),
+                Theme:   theme,
                 Error:   "Registration failed. Please try again.",
             }
             Tmpl.ExecuteTemplate(w, "admin.html", data)
@@ -82,21 +86,49 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method == "DELETE" {
         userID := r.FormValue("userID")
 
-        // Check if the user to be deleted is the admin
-        var isAdmin bool
-        err = db.DB.QueryRow("SELECT is_admin FROM users WHERE id = ?", userID).Scan(&isAdmin)
+        // Check if the user to be deleted is an admin
+        var isAdminUser bool
+        err = db.DB.QueryRow("SELECT is_admin FROM users WHERE id = ?", userID).Scan(&isAdminUser)
         if err != nil {
             http.Error(w, "Error fetching user data", http.StatusInternalServerError)
             return
         }
 
-        if isAdmin {
+        if isAdminUser {
             data := PageData{
                 Title:   "Admin Panel",
                 Message: "Manage Users",
                 Year:    time.Now().Year(),
-                Error:   "Cannot delete the admin account.",
+                Theme:   theme,
+                Error:   "Cannot delete an admin account.",
             }
+            rows, err := db.DB.Query("SELECT id, username, uuid FROM users")
+            if err != nil {
+                http.Error(w, "Error fetching users", http.StatusInternalServerError)
+                return
+            }
+            defer rows.Close()
+
+            var users []struct {
+                ID       int
+                Username string
+                UUID     string
+            }
+
+            for rows.Next() {
+                var user struct {
+                    ID       int
+                    Username string
+                    UUID     string
+                }
+                if err := rows.Scan(&user.ID, &user.Username, &user.UUID); err != nil {
+                    http.Error(w, "Error scanning user data", http.StatusInternalServerError)
+                    return
+                }
+                users = append(users, user)
+            }
+
+            data.Users = users
             Tmpl.ExecuteTemplate(w, "admin.html", data)
             return
         }
@@ -108,6 +140,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
                 Title:   "Admin Panel",
                 Message: "Manage Users",
                 Year:    time.Now().Year(),
+                Theme:   theme,
                 Error:   "Error deleting user. Please try again.",
             }
             Tmpl.ExecuteTemplate(w, "admin.html", data)
@@ -149,6 +182,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
         Message: "Manage Users",
         Year:    time.Now().Year(),
         Users:   users,
+        Theme:   theme,
     }
     Tmpl.ExecuteTemplate(w, "admin.html", data)
 }
