@@ -60,6 +60,17 @@ func InitDB() {
         log.Fatal(err)
     }
 
+    createSiteSettingsTable := `
+    CREATE TABLE IF NOT EXISTS site_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        setting_key TEXT UNIQUE NOT NULL,
+        image_data BLOB
+    );`
+    _, err = DB.Exec(createSiteSettingsTable)
+    if err != nil {
+        log.Fatal(err)
+    }
+
     // Check if admin user exists, if not, create one
     var adminUsername string
     err = DB.QueryRow("SELECT username FROM users WHERE username = 'admin'").Scan(&adminUsername)

@@ -20,7 +20,6 @@
         // Apply theme immediately to prevent flash of white
         (function() {
             const theme = '{{.Theme}}';
-            console.log("Theme value:", theme); // Debug log to check theme value
             if (theme === 'dark') {
                 // Apply dark mode as soon as possible
                 document.documentElement.classList.add('dark-mode');
@@ -38,7 +37,10 @@
 </head>
 <body>
     <header>
-        <h1>{{.Title}}</h1>
+        <div class="logo-container">
+            <img id="site-logo" src="{{.LogoURL | default "/logo"}}" alt="Site Logo" style="max-height: 50px; margin-left: 20px;">
+            <h1>{{.Title}}</h1>
+        </div>
     </header>
     <nav>
         <ul>
@@ -88,6 +90,17 @@
                     }
                 }
             });
+        });
+        // Script to handle logo loading with cache busting
+        window.addEventListener('DOMContentLoaded', function() {
+            const logoImg = document.getElementById('site-logo');
+            // Add a timestamp to the URL to prevent caching
+            if (logoImg.src.includes('/logo')) {
+                logoImg.src = logoImg.src.split('?')[0] + '?v=' + new Date().getTime();
+            }
+            logoImg.onerror = function() {
+                logoImg.src = "/static/logo.png?v=" + new Date().getTime(); // Fallback with timestamp
+            };
         });
     </script>
 </body>
